@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, MapPin, Wind, Droplets, Thermometer, RefreshCw, Star } from 'lucide-react';
 import { fetchWeather, type WeatherData } from '@/lib/weather';
 import DynamicBackground from './DynamicBackground';
@@ -22,24 +21,21 @@ export default function WeatherDashboard() {
   const { user } = useUser();
   const { firestore } = useFirebase();
   
-  // Get default city from Firestore
   const { data: prefs, loading: prefsLoading } = useDoc<{ defaultCity: string }>(
     user && firestore ? `users/${user.uid}` : null
   );
 
-  const handleFetch = async (searchQuery: string, isAutoSave = true) => {
+  const handleFetch = useCallback(async (searchQuery: string, isAutoSave = true) => {
     if (!searchQuery.trim()) return;
     setLoading(true);
     try {
       const data = await fetchWeather(searchQuery);
       setWeather(data);
       
-      // Automatically set as default if user is logged in and auto-save is enabled
       if (user && firestore && isAutoSave) {
         const prefsRef = doc(firestore, 'users', user.uid);
         setDoc(prefsRef, { defaultCity: data.current.locationName }, { merge: true });
         
-        // Only toast if it's a new default being set (optional, but keeps UI clean)
         if (data.current.locationName !== prefs?.defaultCity) {
           toast({
             title: "Default Location Saved",
@@ -51,12 +47,39 @@ export default function WeatherDashboard() {
       toast({
         variant: "destructive",
         title: "City Not Found",
-        description: "Please check the spelling and try again."
+        description: "Please check the search term and try again."
       });
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, firestore, prefs?.defaultCity]);
+
+  const handleGeolocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      handleFetch('San Francisco', false);
+      return;
+    }
+
+    setLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        handleFetch(`${pos.coords.latitude},${pos.coords.longitude}`, true);
+      },
+      () => {
+        handleFetch('San Francisco', false);
+      }
+    );
+  }, [handleFetch]);
+
+  useEffect(() => {
+    if (prefsLoading) return;
+
+    if (prefs?.defaultCity) {
+      handleFetch(prefs.defaultCity, false);
+    } else {
+      handleGeolocation();
+    }
+  }, [prefsLoading, prefs?.defaultCity, handleFetch, handleGeolocation]);
 
   const handleSetDefault = () => {
     if (!user || !firestore || !weather) {
@@ -75,49 +98,12 @@ export default function WeatherDashboard() {
     });
   };
 
-  const handleGeolocation = () => {
-    if (!navigator.geolocation) {
-      toast({
-        variant: "destructive",
-        description: "Geolocation is not supported. Using San Francisco as fallback."
-      });
-      handleFetch('San Francisco', false);
-      return;
-    }
-
-    setLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        // Fetch and automatically save the detected location
-        handleFetch(`${pos.coords.latitude},${pos.coords.longitude}`, true);
-      },
-      () => {
-        toast({
-          variant: "destructive",
-          description: "Location access denied. Using San Francisco as fallback."
-        });
-        handleFetch('San Francisco', false);
-      }
-    );
-  };
-
-  // Initial Load Logic: Load preferences or detect location
-  useEffect(() => {
-    if (prefsLoading) return;
-
-    if (prefs?.defaultCity) {
-      handleFetch(prefs.defaultCity, false); // Don't re-save if already loading the saved default
-    } else {
-      handleGeolocation();
-    }
-  }, [prefsLoading, prefs?.defaultCity]);
-
   if (loading && !weather) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-4 text-center">
           <RefreshCw className="animate-spin text-primary" size={48} />
-          <p className="text-xl font-headline tracking-widest text-primary/80 animate-pulse uppercase">Detecting Location...</p>
+          <p className="text-xl font-headline tracking-widest text-primary/80 animate-pulse uppercase">Syncing Atmospheric Data...</p>
         </div>
       </div>
     );

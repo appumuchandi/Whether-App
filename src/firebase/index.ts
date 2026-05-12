@@ -1,4 +1,3 @@
-
 'use client';
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
@@ -8,14 +7,9 @@ import { firebaseConfig } from './config';
 
 export function initializeFirebase() {
   try {
-    // Basic validation: ensure API key is present and doesn't look like a placeholder
-    const isValidConfig = 
-      firebaseConfig.apiKey && 
-      firebaseConfig.apiKey !== 'undefined' && 
-      !firebaseConfig.apiKey.includes('placeholder');
+    const isConfigValid = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undefined' && !firebaseConfig.apiKey.includes('placeholder');
 
-    if (!isValidConfig) {
-      console.warn("Firebase: Invalid or missing API Key. Please check your environment variables.");
+    if (!isConfigValid) {
       return { app: null, auth: null, firestore: null };
     }
 
@@ -25,7 +19,6 @@ export function initializeFirebase() {
     
     return { app, auth, firestore };
   } catch (error) {
-    console.error("Firebase initialization failed:", error);
     return { app: null, auth: null, firestore: null };
   }
 }

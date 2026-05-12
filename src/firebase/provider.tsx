@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
@@ -29,8 +28,8 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    const { app, auth, firestore } = initializeFirebase();
-    setServices({ app, auth, firestore });
+    const initialized = initializeFirebase();
+    setServices(initialized);
   }, []);
 
   return (

@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useUser, useFirebase } from '@/firebase';
 import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
-import { LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { LogIn, LogOut, User as UserIcon, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -14,20 +13,41 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { toast } from '@/hooks/use-toast';
 
 export default function AuthButton() {
   const { user, loading } = useUser();
   const { auth } = useFirebase();
 
   const handleLogin = async () => {
-    if (!auth) return;
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    if (!auth) {
+      toast({
+        variant: "destructive",
+        title: "Auth Service Unavailable",
+        description: "Please check your Firebase configuration."
+      });
+      return;
+    }
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: error.message || "Please try again later."
+      });
+    }
   };
 
   const handleLogout = async () => {
     if (!auth) return;
-    await signOut(auth);
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   if (loading) return <div className="h-10 w-10 animate-pulse bg-white/10 rounded-full" />;
@@ -63,7 +83,7 @@ export default function AuthButton() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-white/10" />
-        <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive gap-2">
+        <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive gap-2 cursor-pointer">
           <LogOut size={16} />
           Sign out
         </DropdownMenuItem>
