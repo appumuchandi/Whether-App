@@ -27,22 +27,25 @@ export default function WeatherDashboard() {
     user && firestore ? `users/${user.uid}` : null
   );
 
-  const handleFetch = async (searchQuery: string) => {
+  const handleFetch = async (searchQuery: string, isAutoSave = true) => {
     if (!searchQuery.trim()) return;
     setLoading(true);
     try {
       const data = await fetchWeather(searchQuery);
       setWeather(data);
       
-      // Automatically set as default if user is logged in
-      if (user && firestore) {
+      // Automatically set as default if user is logged in and auto-save is enabled
+      if (user && firestore && isAutoSave) {
         const prefsRef = doc(firestore, 'users', user.uid);
         setDoc(prefsRef, { defaultCity: data.current.locationName }, { merge: true });
         
-        toast({
-          title: "Home City Updated",
-          description: `${data.current.locationName} is now your default.`
-        });
+        // Only toast if it's a new default being set (optional, but keeps UI clean)
+        if (data.current.locationName !== prefs?.defaultCity) {
+          toast({
+            title: "Default Location Saved",
+            description: `${data.current.locationName} is now your home city.`
+          });
+        }
       }
     } catch (err) {
       toast({
@@ -76,31 +79,34 @@ export default function WeatherDashboard() {
     if (!navigator.geolocation) {
       toast({
         variant: "destructive",
-        description: "Geolocation is not supported by your browser."
+        description: "Geolocation is not supported. Using San Francisco as fallback."
       });
+      handleFetch('San Francisco', false);
       return;
     }
 
+    setLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        handleFetch(`${pos.coords.latitude},${pos.coords.longitude}`);
+        // Fetch and automatically save the detected location
+        handleFetch(`${pos.coords.latitude},${pos.coords.longitude}`, true);
       },
       () => {
         toast({
           variant: "destructive",
           description: "Location access denied. Using San Francisco as fallback."
         });
-        handleFetch('San Francisco');
+        handleFetch('San Francisco', false);
       }
     );
   };
 
-  // Initial Load Logic
+  // Initial Load Logic: Load preferences or detect location
   useEffect(() => {
     if (prefsLoading) return;
 
     if (prefs?.defaultCity) {
-      handleFetch(prefs.defaultCity);
+      handleFetch(prefs.defaultCity, false); // Don't re-save if already loading the saved default
     } else {
       handleGeolocation();
     }
@@ -111,7 +117,7 @@ export default function WeatherDashboard() {
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <RefreshCw className="animate-spin text-primary" size={48} />
-          <p className="text-xl font-headline tracking-widest text-primary/80 animate-pulse uppercase">Atmos</p>
+          <p className="text-xl font-headline tracking-widest text-primary/80 animate-pulse uppercase">Detecting Location...</p>
         </div>
       </div>
     );
@@ -129,7 +135,7 @@ export default function WeatherDashboard() {
                 <WeatherIcon code={weather.current.conditionCode} size={32} />
               </div>
               <div>
-                <h1 className="text-4xl font-headline font-bold text-white tracking-tight leading-none mb-1 uppercase">Atmos</h1>
+                <h1 className="text-4xl font-headline font-bold text-white tracking-tight leading-none mb-1 uppercase text-glow">Atmos</h1>
                 <p className="text-primary/70 font-medium text-xs tracking-widest uppercase">Weather Intelligence</p>
               </div>
             </div>
@@ -142,7 +148,7 @@ export default function WeatherDashboard() {
                   className="bg-white/10 backdrop-blur-md border-white/20 focus:border-primary/50 text-white pl-10 h-12 rounded-xl transition-all"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleFetch(query)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleFetch(query, true)}
                 />
               </div>
               <Button 
@@ -150,7 +156,7 @@ export default function WeatherDashboard() {
                 size="icon" 
                 className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/20 h-12 w-12 rounded-xl shrink-0"
                 onClick={handleGeolocation}
-                title="Use Current Location"
+                title="Detect My Location"
               >
                 <MapPin size={20} className="text-white" />
               </Button>
