@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, MapPin, Wind, Droplets, Thermometer, RefreshCw, Star, X } from 'lucide-react';
+import { Search, MapPin, Wind, Droplets, Thermometer, RefreshCw, Star, X, Building2, ChevronRight } from 'lucide-react';
 import { fetchWeather, type WeatherData } from '@/lib/weather';
 import DynamicBackground from './DynamicBackground';
 import WeatherIcon from './WeatherIcon';
@@ -14,6 +14,10 @@ import { format } from 'date-fns';
 import { useUser, useDoc, useFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { IndianCities } from '@/lib/indian-cities';
+
+const POPULAR_KARNATAKA = [
+  "Bengaluru", "Mysuru", "Hubballi", "Mangaluru", "Hampi"
+];
 
 export default function WeatherDashboard() {
   const [query, setQuery] = useState('');
@@ -74,10 +78,15 @@ export default function WeatherDashboard() {
           title: "Location Access Required",
           description: "Please search for your city manually or enable location permissions."
         });
-        setLoading(false);
+        // Default to Bengaluru if geolocation fails and no preference exists
+        if (!prefs?.defaultCity) {
+          handleFetch("Bengaluru", false);
+        } else {
+          setLoading(false);
+        }
       }
     );
-  }, [handleFetch]);
+  }, [handleFetch, prefs?.defaultCity]);
 
   useEffect(() => {
     if (prefsLoading) return;
@@ -153,7 +162,7 @@ export default function WeatherDashboard() {
               </div>
               <div>
                 <h1 className="text-4xl font-headline font-bold text-white tracking-tight leading-none mb-1 uppercase text-glow">Atmos</h1>
-                <p className="text-primary/70 font-medium text-xs tracking-widest uppercase">Weather Intelligence</p>
+                <p className="text-primary/70 font-medium text-xs tracking-widest uppercase">Karnataka Weather Intelligence</p>
               </div>
             </div>
 
@@ -225,7 +234,7 @@ export default function WeatherDashboard() {
                   <div>
                     <div className="flex items-center gap-2 text-white/60 mb-2 font-medium">
                       <MapPin size={16} className="text-accent" />
-                      <span className="tracking-wide">{weather.current.locationName}, {weather.current.country}</span>
+                      <span className="tracking-wide">{weather.current.locationName}, {weather.current.region}</span>
                       {weather.current.locationName === prefs?.defaultCity && (
                         <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase tracking-widest font-bold ml-2">Home</span>
                       )}
@@ -276,8 +285,27 @@ export default function WeatherDashboard() {
               <WeatherAdvice weather={weather} />
             </div>
 
-            <div className="lg:col-span-4">
-              <div className="glass-card p-6 h-full flex flex-col">
+            <div className="lg:col-span-4 space-y-6">
+              <div className="glass-card p-6">
+                <h3 className="text-white font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2 mb-6">
+                  <Building2 size={16} className="text-primary" />
+                  Regional Hubs
+                </h3>
+                <div className="space-y-2">
+                  {POPULAR_KARNATAKA.map(city => (
+                    <button
+                      key={city}
+                      onClick={() => handleFetch(city, true)}
+                      className="w-full flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-primary/10 hover:border-primary/30 transition-all group"
+                    >
+                      <span className="text-white/80 font-medium group-hover:text-white">{city}</span>
+                      <ChevronRight size={16} className="text-white/20 group-hover:text-primary transition-colors" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="glass-card p-6 flex flex-col">
                 <h3 className="text-white font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2 mb-6">
                   <RefreshCw size={16} className="text-primary" />
                   5-Day Forecast

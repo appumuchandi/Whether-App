@@ -49,26 +49,26 @@ export const getWeatherCategory = (code: number) => {
 // Generic Mock Data used when API Key is missing
 const MOCK_WEATHER: WeatherData = {
   current: {
-    temp: 20,
+    temp: 28,
     condition: "Syncing Data",
-    conditionCode: 1006,
-    humidity: 50,
-    windSpeed: 10,
-    feelsLike: 19,
+    conditionCode: 1000,
+    humidity: 45,
+    windSpeed: 12,
+    feelsLike: 30,
     isDay: true,
-    locationName: "Local Area",
-    region: "Region",
-    country: "Location",
+    locationName: "Karnataka Hub",
+    region: "Karnataka",
+    country: "India",
     lastUpdated: new Date().toISOString()
   },
   forecast: Array.from({ length: 5 }, (_, i) => ({
     date: new Date(Date.now() + i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    maxTemp: 22,
-    minTemp: 15,
-    condition: "Partly Cloudy",
-    conditionCode: 1003,
-    avgHumidity: 50,
-    maxWind: 10
+    maxTemp: 32,
+    minTemp: 21,
+    condition: "Mostly Sunny",
+    conditionCode: 1000,
+    avgHumidity: 40,
+    maxWind: 15
   }))
 };
 
@@ -76,12 +76,12 @@ export async function fetchWeather(query: string): Promise<WeatherData> {
   const apiKey = process.env.NEXT_PUBLIC_WEATHER_API_KEY;
   
   if (!apiKey || apiKey.includes('placeholder')) {
-    console.warn("WeatherAPI Key missing or invalid. Please provide a valid NEXT_PUBLIC_WEATHER_API_KEY in your .env file or Firebase console.");
+    console.warn("WeatherAPI Key missing or invalid. Please provide a valid NEXT_PUBLIC_WEATHER_API_KEY.");
     return {
       ...MOCK_WEATHER,
       current: {
         ...MOCK_WEATHER.current,
-        locationName: query.includes(',') ? "Detected Coordinates" : query
+        locationName: query.includes(',') ? "Current Location" : query.split(',')[0]
       }
     };
   }
@@ -92,7 +92,7 @@ export async function fetchWeather(query: string): Promise<WeatherData> {
     );
 
     if (!response.ok) {
-      throw new Error('City not found');
+      throw new Error('Location not found');
     }
 
     const data = await response.json();
