@@ -6,6 +6,7 @@ import { fetchWeather, type WeatherData } from '@/lib/weather';
 import DynamicBackground from './DynamicBackground';
 import WeatherIcon from './WeatherIcon';
 import WeatherAdvice from './WeatherAdvice';
+import ProfessionalClock from './ProfessionalClock';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
@@ -174,6 +175,12 @@ export default function WeatherDashboard() {
 
             {/* Forecast Sidebar */}
             <div className="lg:col-span-4 space-y-6 animate-fade-in [animation-delay:300ms]">
+              
+              {/* Professional Clock Component */}
+              <div className="glass-card p-6 flex items-center justify-center overflow-hidden">
+                <ProfessionalClock locationName={weather.current.locationName} />
+              </div>
+
               <div className="glass-card p-6 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-white font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2">
