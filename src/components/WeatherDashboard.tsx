@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { Search, MapPin, Wind, Droplets, Thermometer, RefreshCw, Star } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Search, MapPin, Wind, Droplets, Thermometer, RefreshCw, Star, X } from 'lucide-react';
 import { fetchWeather, type WeatherData } from '@/lib/weather';
 import DynamicBackground from './DynamicBackground';
 import WeatherIcon from './WeatherIcon';
@@ -13,13 +13,17 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { useUser, useDoc, useFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { IndianCities } from '@/lib/indian-cities';
 
 export default function WeatherDashboard() {
   const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(true);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const { user } = useUser();
   const { firestore } = useFirebase();
+  const suggestionRef = useRef<HTMLDivElement>(null);
   
   const { data: prefs, loading: prefsLoading } = useDoc<{ defaultCity: string }>(
     user && firestore ? `users/${user.uid}` : null
@@ -28,9 +32,11 @@ export default function WeatherDashboard() {
   const handleFetch = useCallback(async (searchQuery: string, isAutoSave = true) => {
     if (!searchQuery.trim()) return;
     setLoading(true);
+    setShowSuggestions(false);
     try {
       const data = await fetchWeather(searchQuery);
       setWeather(data);
+      setQuery('');
       
       if (user && firestore && isAutoSave) {
         const prefsRef = doc(firestore, 'users', user.uid);
@@ -76,12 +82,35 @@ export default function WeatherDashboard() {
   useEffect(() => {
     if (prefsLoading) return;
 
-    if (prefs?.defaultCity) {
+    if (prefs?.defaultCity && !weather) {
       handleFetch(prefs.defaultCity, false);
     } else if (!weather && !query) {
       handleGeolocation();
     }
   }, [prefsLoading, prefs?.defaultCity, handleFetch, handleGeolocation, weather, query]);
+
+  useEffect(() => {
+    if (query.length > 1) {
+      const filtered = IndianCities.filter(city => 
+        city.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 5);
+      setSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, [query]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (suggestionRef.current && !suggestionRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleSetDefault = () => {
     if (!user || !firestore || !weather) {
@@ -128,17 +157,42 @@ export default function WeatherDashboard() {
               </div>
             </div>
 
-            <div className="flex gap-2 w-full md:max-w-xl">
+            <div className="flex gap-2 w-full md:max-w-xl relative" ref={suggestionRef}>
               <div className="relative flex-1 group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-primary transition-colors" size={18} />
                 <Input 
-                  placeholder="Search city..." 
+                  placeholder="Search Indian cities..." 
                   className="bg-white/10 backdrop-blur-md border-white/20 focus:border-primary/50 text-white pl-10 h-12 rounded-xl transition-all"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleFetch(query, true)}
+                  onFocus={() => query.length > 1 && setShowSuggestions(true)}
                 />
+                {query && (
+                  <button 
+                    onClick={() => setQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
               </div>
+
+              {showSuggestions && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-background/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  {suggestions.map((city) => (
+                    <button
+                      key={city}
+                      onClick={() => handleFetch(city, true)}
+                      className="w-full text-left px-4 py-3 text-sm text-white/80 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-3 border-b border-white/5 last:border-0"
+                    >
+                      <MapPin size={14} className="text-primary/60" />
+                      {city}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <Button 
                 variant="outline" 
                 size="icon" 
