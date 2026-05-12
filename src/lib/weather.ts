@@ -5,6 +5,7 @@ export interface CurrentWeather {
   humidity: number;
   windSpeed: number;
   feelsLike: number;
+  visibility: number;
   isDay: boolean;
   locationName: string;
   region: string;
@@ -50,13 +51,14 @@ export const getWeatherCategory = (code: number) => {
 const MOCK_WEATHER: WeatherData = {
   current: {
     temp: 28,
-    condition: "Syncing Data",
+    condition: "Clear Skies",
     conditionCode: 1000,
     humidity: 45,
     windSpeed: 12,
     feelsLike: 30,
+    visibility: 10,
     isDay: true,
-    locationName: "Karnataka Hub",
+    locationName: "Bengaluru",
     region: "Karnataka",
     country: "India",
     lastUpdated: new Date().toISOString()
@@ -65,7 +67,7 @@ const MOCK_WEATHER: WeatherData = {
     date: new Date(Date.now() + i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     maxTemp: 32,
     minTemp: 21,
-    condition: "Mostly Sunny",
+    condition: "Sunny",
     conditionCode: 1000,
     avgHumidity: 40,
     maxWind: 15
@@ -76,12 +78,11 @@ export async function fetchWeather(query: string): Promise<WeatherData> {
   const apiKey = process.env.NEXT_PUBLIC_WEATHER_API_KEY;
   
   if (!apiKey || apiKey.includes('placeholder')) {
-    console.warn("WeatherAPI Key missing or invalid. Please provide a valid NEXT_PUBLIC_WEATHER_API_KEY.");
     return {
       ...MOCK_WEATHER,
       current: {
         ...MOCK_WEATHER.current,
-        locationName: query.includes(',') ? "Current Location" : query.split(',')[0]
+        locationName: query.includes(',') ? "My Location" : query.split(',')[0]
       }
     };
   }
@@ -105,6 +106,7 @@ export async function fetchWeather(query: string): Promise<WeatherData> {
         humidity: data.current.humidity,
         windSpeed: data.current.wind_kph,
         feelsLike: Math.round(data.current.feelslike_c),
+        visibility: data.current.vis_km,
         isDay: !!data.current.is_day,
         locationName: data.location.name,
         region: data.location.region,
