@@ -29,10 +29,22 @@ export default function WeatherDashboard() {
   );
 
   const handleFetch = async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
     setLoading(true);
     try {
       const data = await fetchWeather(searchQuery);
       setWeather(data);
+      
+      // Automatically set as default if user is logged in, as requested
+      if (user && firestore) {
+        const prefsRef = doc(firestore, 'users', user.uid);
+        setDoc(prefsRef, { defaultCity: data.current.locationName }, { merge: true });
+        
+        toast({
+          title: "Home City Updated",
+          description: `${data.current.locationName} is now your default.`
+        });
+      }
     } catch (err) {
       toast({
         variant: "destructive",
