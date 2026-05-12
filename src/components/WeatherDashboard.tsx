@@ -1,21 +1,32 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Search, MapPin, Wind, Droplets, Thermometer, RefreshCw } from 'lucide-react';
+import { Search, MapPin, Wind, Droplets, Thermometer, RefreshCw, Star } from 'lucide-react';
 import { fetchWeather, type WeatherData } from '@/lib/weather';
 import DynamicBackground from './DynamicBackground';
 import WeatherIcon from './WeatherIcon';
 import WeatherAdvice from './WeatherAdvice';
 import ProfessionalClock from './ProfessionalClock';
+import AuthButton from './AuthButton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { useUser, useDoc, useFirebase } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 export default function WeatherDashboard() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [weather, setWeather] = useState<WeatherData | null>(null);
+  const { user } = useUser();
+  const { firestore } = useFirebase();
+  
+  // Get default city from Firestore
+  const { data: prefs, loading: prefsLoading } = useDoc<{ defaultCity: string }>(
+    user ? `users/${user.uid}` : null
+  );
 
   const handleFetch = async (searchQuery: string) => {
     setLoading(true);
@@ -31,6 +42,23 @@ export default function WeatherDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSetDefault = () => {
+    if (!user || !firestore || !weather) {
+      toast({
+        description: "Please sign in to save a default city."
+      });
+      return;
+    }
+
+    const prefsRef = doc(firestore, 'users', user.uid);
+    setDoc(prefsRef, { defaultCity: weather.current.locationName }, { merge: true });
+    
+    toast({
+      title: "Default city saved!",
+      description: `${weather.current.locationName} is now your home city.`
+    });
   };
 
   const handleGeolocation = () => {
@@ -49,16 +77,23 @@ export default function WeatherDashboard() {
       () => {
         toast({
           variant: "destructive",
-          description: "Location access denied. Using San Francisco as default."
+          description: "Location access denied. Using San Francisco as fallback."
         });
         handleFetch('San Francisco');
       }
     );
   };
 
+  // Initial Load Logic
   useEffect(() => {
-    handleGeolocation();
-  }, []);
+    if (prefsLoading) return;
+
+    if (prefs?.defaultCity) {
+      handleFetch(prefs.defaultCity);
+    } else {
+      handleGeolocation();
+    }
+  }, [prefsLoading, prefs?.defaultCity]);
 
   if (loading && !weather) {
     return (
@@ -81,19 +116,19 @@ export default function WeatherDashboard() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 animate-fade-in">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-primary/20 rounded-xl backdrop-blur-md border border-white/20">
-                <WeatherIcon code={weather.current.conditionCode} isDay={weather.current.isDay} size={32} />
+                <WeatherIcon code={weather.current.conditionCode} size={32} />
               </div>
               <div>
                 <h1 className="text-4xl font-headline font-bold text-white tracking-tight leading-none mb-1 uppercase">Atmos</h1>
-                <p className="text-primary/70 font-medium text-xs tracking-widest uppercase">Live Weather Hub</p>
+                <p className="text-primary/70 font-medium text-xs tracking-widest uppercase">Weather Intelligence</p>
               </div>
             </div>
 
-            <div className="flex gap-2 w-full md:max-w-md">
+            <div className="flex gap-2 w-full md:max-w-xl">
               <div className="relative flex-1 group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-primary transition-colors" size={18} />
                 <Input 
-                  placeholder="Discover weather in any city..." 
+                  placeholder="Search city..." 
                   className="bg-white/10 backdrop-blur-md border-white/20 focus:border-primary/50 text-white pl-10 h-12 rounded-xl transition-all"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -105,9 +140,21 @@ export default function WeatherDashboard() {
                 size="icon" 
                 className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/20 h-12 w-12 rounded-xl shrink-0"
                 onClick={handleGeolocation}
+                title="Use Current Location"
               >
                 <MapPin size={20} className="text-white" />
               </Button>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className={`bg-white/10 backdrop-blur-md border-white/20 h-12 w-12 rounded-xl shrink-0 transition-all ${weather.current.locationName === prefs?.defaultCity ? 'text-primary bg-primary/10 border-primary/50' : 'text-white hover:bg-white/20'}`}
+                onClick={handleSetDefault}
+                title="Set as Default City"
+              >
+                <Star size={20} fill={weather.current.locationName === prefs?.defaultCity ? "currentColor" : "none"} />
+              </Button>
+              <div className="hidden md:block w-px h-12 bg-white/10 mx-1" />
+              <AuthButton />
             </div>
           </div>
 
@@ -123,6 +170,9 @@ export default function WeatherDashboard() {
                     <div className="flex items-center gap-2 text-white/60 mb-2 font-medium">
                       <MapPin size={16} className="text-accent" />
                       <span className="tracking-wide">{weather.current.locationName}, {weather.current.country}</span>
+                      {weather.current.locationName === prefs?.defaultCity && (
+                        <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase tracking-widest font-bold">Home</span>
+                      )}
                     </div>
                     <h2 className="text-8xl md:text-9xl font-headline font-bold text-white tracking-tighter text-glow relative leading-none">
                       {weather.current.temp}°
@@ -139,7 +189,7 @@ export default function WeatherDashboard() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-white/50 text-sm uppercase font-semibold tracking-wider">
                       <Wind size={14} className="text-primary" />
-                      Wind Speed
+                      Wind
                     </div>
                     <p className="text-xl font-headline font-bold text-white">{weather.current.windSpeed} km/h</p>
                   </div>
@@ -176,7 +226,6 @@ export default function WeatherDashboard() {
             {/* Forecast Sidebar */}
             <div className="lg:col-span-4 space-y-6 animate-fade-in [animation-delay:300ms]">
               
-              {/* Professional Clock Component */}
               <div className="glass-card p-6 flex items-center justify-center overflow-hidden">
                 <ProfessionalClock locationName={weather.current.locationName} />
               </div>
@@ -197,7 +246,7 @@ export default function WeatherDashboard() {
                     >
                       <div className="flex items-center gap-4">
                         <div className="p-2 bg-white/5 rounded-xl group-hover:scale-110 transition-transform">
-                          <WeatherIcon code={day.conditionCode} isDay={true} size={24} />
+                          <WeatherIcon code={day.conditionCode} size={24} />
                         </div>
                         <div>
                           <p className="text-white font-semibold font-headline">
@@ -213,13 +262,6 @@ export default function WeatherDashboard() {
                       </div>
                     </div>
                   ))}
-                </div>
-
-                <div className="mt-8 p-4 bg-primary/10 border border-primary/20 rounded-2xl">
-                  <p className="text-primary font-medium text-xs uppercase tracking-widest mb-1">Atmosphere Note</p>
-                  <p className="text-white/70 text-sm leading-relaxed italic">
-                    Forecast precision increases as the observation date approaches. Atmos provides real-time adjustments.
-                  </p>
                 </div>
               </div>
             </div>

@@ -1,0 +1,26 @@
+
+{
+  "entities": {
+    "UserPreferences": {
+      "title": "User Preferences",
+      "description": "User specific settings and preferences including default weather city.",
+      "type": "object",
+      "properties": {
+        "defaultCity": {
+          "type": "string",
+          "description": "The user's preferred default city for weather display."
+        }
+      },
+      "required": ["defaultCity"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/UserPreferences" },
+      "description": "User specific document containing preferences."
+    }
+  }
+}
