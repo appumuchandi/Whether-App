@@ -25,7 +25,7 @@ export default function WeatherDashboard() {
   
   // Get default city from Firestore
   const { data: prefs, loading: prefsLoading } = useDoc<{ defaultCity: string }>(
-    user ? `users/${user.uid}` : null
+    user && firestore ? `users/${user.uid}` : null
   );
 
   const handleFetch = async (searchQuery: string) => {
@@ -35,7 +35,7 @@ export default function WeatherDashboard() {
       const data = await fetchWeather(searchQuery);
       setWeather(data);
       
-      // Automatically set as default if user is logged in, as requested
+      // Automatically set as default if user is logged in
       if (user && firestore) {
         const prefsRef = doc(firestore, 'users', user.uid);
         setDoc(prefsRef, { defaultCity: data.current.locationName }, { merge: true });
@@ -124,7 +124,6 @@ export default function WeatherDashboard() {
         <>
           <DynamicBackground conditionCode={weather.current.conditionCode} isDay={weather.current.isDay} />
           
-          {/* Header & Search */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 animate-fade-in">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-primary/20 rounded-xl backdrop-blur-md border border-white/20">
@@ -171,8 +170,6 @@ export default function WeatherDashboard() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            
-            {/* Main Weather Card */}
             <div className="lg:col-span-8 space-y-6">
               <div className="glass-card p-8 md:p-12 animate-fade-in [animation-delay:100ms] overflow-hidden relative">
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
@@ -183,7 +180,7 @@ export default function WeatherDashboard() {
                       <MapPin size={16} className="text-accent" />
                       <span className="tracking-wide">{weather.current.locationName}, {weather.current.country}</span>
                       {weather.current.locationName === prefs?.defaultCity && (
-                        <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase tracking-widest font-bold">Home</span>
+                        <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase tracking-widest font-bold ml-2">Home</span>
                       )}
                     </div>
                     <h2 className="text-8xl md:text-9xl font-headline font-bold text-white tracking-tighter text-glow relative leading-none">
@@ -229,15 +226,12 @@ export default function WeatherDashboard() {
                 </div>
               </div>
 
-              {/* AI Advice */}
               <div className="animate-fade-in [animation-delay:200ms]">
                 <WeatherAdvice weather={weather} />
               </div>
             </div>
 
-            {/* Forecast Sidebar */}
             <div className="lg:col-span-4 space-y-6 animate-fade-in [animation-delay:300ms]">
-              
               <div className="glass-card p-6 flex items-center justify-center overflow-hidden">
                 <ProfessionalClock locationName={weather.current.locationName} />
               </div>
@@ -277,7 +271,6 @@ export default function WeatherDashboard() {
                 </div>
               </div>
             </div>
-
           </div>
         </>
       )}
