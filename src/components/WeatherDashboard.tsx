@@ -35,28 +35,25 @@ export default function WeatherDashboard() {
       if (user && firestore && isAutoSave) {
         const prefsRef = doc(firestore, 'users', user.uid);
         setDoc(prefsRef, { defaultCity: data.current.locationName }, { merge: true });
-        
-        if (data.current.locationName !== prefs?.defaultCity) {
-          toast({
-            title: "Default Location Saved",
-            description: `${data.current.locationName} is now your home city.`
-          });
-        }
       }
     } catch (err) {
       toast({
         variant: "destructive",
-        title: "City Not Found",
-        description: "Please check the search term and try again."
+        title: "Search Failed",
+        description: "Could not find weather data for that location."
       });
     } finally {
       setLoading(false);
     }
-  }, [user, firestore, prefs?.defaultCity]);
+  }, [user, firestore]);
 
   const handleGeolocation = useCallback(() => {
     if (!navigator.geolocation) {
-      handleFetch('San Francisco', false);
+      toast({
+        title: "Geolocation Unsupported",
+        description: "Please search for your city manually."
+      });
+      setLoading(false);
       return;
     }
 
@@ -65,8 +62,13 @@ export default function WeatherDashboard() {
       (pos) => {
         handleFetch(`${pos.coords.latitude},${pos.coords.longitude}`, true);
       },
-      () => {
-        handleFetch('San Francisco', false);
+      (error) => {
+        console.warn("Geolocation error:", error);
+        toast({
+          title: "Location Access Required",
+          description: "Please search for your city manually or enable location permissions."
+        });
+        setLoading(false);
       }
     );
   }, [handleFetch]);
@@ -76,10 +78,10 @@ export default function WeatherDashboard() {
 
     if (prefs?.defaultCity) {
       handleFetch(prefs.defaultCity, false);
-    } else {
+    } else if (!weather && !query) {
       handleGeolocation();
     }
-  }, [prefsLoading, prefs?.defaultCity, handleFetch, handleGeolocation]);
+  }, [prefsLoading, prefs?.defaultCity, handleFetch, handleGeolocation, weather, query]);
 
   const handleSetDefault = () => {
     if (!user || !firestore || !weather) {
@@ -93,7 +95,7 @@ export default function WeatherDashboard() {
     setDoc(prefsRef, { defaultCity: weather.current.locationName }, { merge: true });
     
     toast({
-      title: "Default city saved!",
+      title: "Default Saved",
       description: `${weather.current.locationName} is now your home city.`
     });
   };
@@ -115,7 +117,7 @@ export default function WeatherDashboard() {
         <>
           <DynamicBackground conditionCode={weather.current.conditionCode} isDay={weather.current.isDay} />
           
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 animate-fade-in">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-primary/20 rounded-xl backdrop-blur-md border border-white/20">
                 <WeatherIcon code={weather.current.conditionCode} size={32} />
@@ -162,7 +164,7 @@ export default function WeatherDashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             <div className="lg:col-span-8 space-y-6">
-              <div className="glass-card p-8 md:p-12 animate-fade-in [animation-delay:100ms] overflow-hidden relative">
+              <div className="glass-card p-8 md:p-12 animate-fade-in relative overflow-hidden">
                 <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
                 
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 relative z-10">
@@ -203,9 +205,9 @@ export default function WeatherDashboard() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-white/50 text-sm uppercase font-semibold tracking-wider">
                       <Thermometer size={14} className="text-primary" />
-                      Pressure
+                      Feels Like
                     </div>
-                    <p className="text-xl font-headline font-bold text-white">1012 hPa</p>
+                    <p className="text-xl font-headline font-bold text-white">{weather.current.feelsLike}°C</p>
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-white/50 text-sm uppercase font-semibold tracking-wider">
@@ -217,19 +219,15 @@ export default function WeatherDashboard() {
                 </div>
               </div>
 
-              <div className="animate-fade-in [animation-delay:200ms]">
-                <WeatherAdvice weather={weather} />
-              </div>
+              <WeatherAdvice weather={weather} />
             </div>
 
-            <div className="lg:col-span-4 space-y-6 animate-fade-in [animation-delay:300ms]">
+            <div className="lg:col-span-4">
               <div className="glass-card p-6 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-white font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2">
-                    <RefreshCw size={16} className="text-primary" />
-                    5-Day Forecast
-                  </h3>
-                </div>
+                <h3 className="text-white font-headline font-bold uppercase tracking-widest text-sm flex items-center gap-2 mb-6">
+                  <RefreshCw size={16} className="text-primary" />
+                  5-Day Forecast
+                </h3>
 
                 <div className="space-y-4">
                   {weather.forecast.map((day, idx) => (

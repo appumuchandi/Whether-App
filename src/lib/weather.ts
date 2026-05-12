@@ -40,35 +40,34 @@ const CONDITION_MAP: Record<number, 'clear' | 'cloudy' | 'rain' | 'snow' | 'stor
   1195: 'rain',
   1273: 'storm',
   1276: 'storm',
-  // Simplified for mapping
 };
 
 export const getWeatherCategory = (code: number) => {
   return CONDITION_MAP[code] || 'cloudy';
 };
 
-// Demo/Mock Data as fallback
+// Generic Mock Data used when API Key is missing
 const MOCK_WEATHER: WeatherData = {
   current: {
-    temp: 24,
-    condition: "Partly cloudy",
-    conditionCode: 1003,
-    humidity: 52,
-    windSpeed: 12,
-    feelsLike: 26,
+    temp: 20,
+    condition: "Syncing Data",
+    conditionCode: 1006,
+    humidity: 50,
+    windSpeed: 10,
+    feelsLike: 19,
     isDay: true,
-    locationName: "San Francisco",
-    region: "California",
-    country: "USA",
+    locationName: "Local Area",
+    region: "Region",
+    country: "Location",
     lastUpdated: new Date().toISOString()
   },
   forecast: Array.from({ length: 5 }, (_, i) => ({
     date: new Date(Date.now() + i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    maxTemp: 26 + i,
-    minTemp: 18 - i,
-    condition: "Sunny",
-    conditionCode: 1000,
-    avgHumidity: 45,
+    maxTemp: 22,
+    minTemp: 15,
+    condition: "Partly Cloudy",
+    conditionCode: 1003,
+    avgHumidity: 50,
     maxWind: 10
   }))
 };
@@ -76,9 +75,15 @@ const MOCK_WEATHER: WeatherData = {
 export async function fetchWeather(query: string): Promise<WeatherData> {
   const apiKey = process.env.NEXT_PUBLIC_WEATHER_API_KEY;
   
-  if (!apiKey) {
-    console.warn("WeatherAPI Key not found. Returning mock data.");
-    return MOCK_WEATHER;
+  if (!apiKey || apiKey.includes('placeholder')) {
+    console.warn("WeatherAPI Key missing or invalid. Please provide a valid NEXT_PUBLIC_WEATHER_API_KEY in your .env file or Firebase console.");
+    return {
+      ...MOCK_WEATHER,
+      current: {
+        ...MOCK_WEATHER.current,
+        locationName: query.includes(',') ? "Detected Coordinates" : query
+      }
+    };
   }
 
   try {
