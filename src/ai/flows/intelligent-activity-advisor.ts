@@ -33,7 +33,22 @@ const IntelligentActivityAdvisorOutputSchema = z.object({
 export type IntelligentActivityAdvisorOutput = z.infer<typeof IntelligentActivityAdvisorOutputSchema>;
 
 export async function intelligentActivityAdvisor(input: IntelligentActivityAdvisorInput): Promise<IntelligentActivityAdvisorOutput> {
-  return intelligentActivityAdvisorFlow(input);
+  try {
+    return await intelligentActivityAdvisorFlow(input);
+  } catch (error: any) {
+    // Gracefully handle rate limits or other AI service errors
+    console.error("AI Advisor Flow Error:", error);
+    
+    if (error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
+      return { 
+        suggestion: "AI insights are temporarily resting due to high demand. Please check back in a minute for updated advice." 
+      };
+    }
+    
+    return { 
+      suggestion: "Plan your day wisely based on the current temperature and conditions." 
+    };
+  }
 }
 
 const prompt = ai.definePrompt({
