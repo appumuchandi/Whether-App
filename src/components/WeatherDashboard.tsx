@@ -145,7 +145,7 @@ export default function WeatherDashboard() {
           </div>
           <div className="space-y-2">
             <h2 className="text-2xl font-headline font-black tracking-[0.3em] text-white uppercase animate-pulse">Syncing Atmosphere</h2>
-            <p className="text-white/30 font-medium text-xs tracking-widest uppercase">Connecting to Karnataka Intelligence Hubs</p>
+            <p className="text-white/30 font-medium text-xs tracking-widest uppercase">Connecting to Atmosphere Intelligence Hubs</p>
           </div>
         </div>
       </div>
@@ -302,7 +302,7 @@ export default function WeatherDashboard() {
               <div className="glass-card p-10 shadow-2xl">
                 <h3 className="text-white/40 font-headline font-black uppercase tracking-[0.3em] text-[10px] flex items-center gap-4 mb-10">
                   <Building2 size={20} className="text-primary" />
-                  Regional Intelligence
+                  Atmosphere Intelligence
                 </h3>
                 <div className="grid grid-cols-1 gap-4">
                   {POPULAR_KARNATAKA.map(city => (

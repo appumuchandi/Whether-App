@@ -50,7 +50,7 @@ export default function WeatherAdvice({ weather }: Props) {
         <Sparkles size={20} className={loading ? "animate-pulse" : ""} />
       </div>
       <div className="flex-1">
-        <h3 className="text-sm font-semibold text-accent/80 uppercase tracking-wider mb-1 font-headline">Atmos Intelligence</h3>
+        <h3 className="text-sm font-semibold text-accent/80 uppercase tracking-wider mb-1 font-headline">Atmosphere Intelligence</h3>
         <p className="text-white font-medium leading-relaxed">
           {advice}
         </p>
